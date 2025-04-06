@@ -9,4 +9,21 @@ cloudinary.config({
   secure: true
 });
 
-module.exports = cloudinary;
+// Helper function to standardize upload options
+const getUploadOptions = (customOptions = {}) => {
+  return {
+    folder: 'dhanyabuilders',
+    transformation: [
+      { quality: 'auto' },
+      { fetch_format: 'auto' },
+      { flags: 'ml_default' }
+    ],
+    resource_type: 'auto',
+    ...customOptions
+  };
+};
+
+module.exports = {
+  cloudinary,
+  getUploadOptions
+};

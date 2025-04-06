@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const multer = require('multer');
-const cloudinary = require('./config/cloudinary');
+const { cloudinary, getUploadOptions } = require('./config/cloudinary');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
 const materialRoutes = require('./routes/materials');
@@ -94,15 +94,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     const base64String = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     
     // Upload file to Cloudinary with ml_default transformation
-    const result = await cloudinary.uploader.upload(base64String, {
-      folder: 'dhanyabuilders',
-      transformation: [
-        { quality: 'auto' }, 
-        { fetch_format: 'auto' },
-        { flags: 'ml_default' }
-      ],
-      resource_type: 'auto'
-    });
+    const result = await cloudinary.uploader.upload(base64String, getUploadOptions());
     
     // Return the Cloudinary URL
     res.json({ 
@@ -125,14 +117,7 @@ app.post('/api/upload/base64', async (req, res) => {
     }
     
     // Upload base64 image to Cloudinary with ml_default transformation
-    const result = await cloudinary.uploader.upload(image, {
-      folder: 'dhanyabuilders',
-      transformation: [
-        { quality: 'auto' }, 
-        { fetch_format: 'auto' },
-        { flags: 'ml_default' }
-      ]
-    });
+    const result = await cloudinary.uploader.upload(image, getUploadOptions());
     
     res.json({ 
       message: 'Base64 image uploaded successfully',

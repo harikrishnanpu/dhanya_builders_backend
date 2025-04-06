@@ -56,7 +56,7 @@ const materialSchema = new mongoose.Schema({
     type: String,
   },
   receivedImage: {
-    type: String, // URL to the stored image
+    type: String, // Now this will store Cloudinary URLs
   },
   createdAt: {
     type: Date,

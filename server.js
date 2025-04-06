@@ -6,6 +6,7 @@ const dotenv = require('dotenv');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const cloudinary = require('./config/cloudinary');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
 const materialRoutes = require('./routes/materials');
@@ -31,8 +32,8 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Configure storage for uploaded files
-const uploadDir = path.join(__dirname, 'uploads');
+// Configure storage for temporary uploaded files
+const uploadDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -100,17 +101,57 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/tasks', taskRoutes);
 
-// Image Upload Route
-app.post('/api/upload', upload.single('image'), (req, res) => {
+// Image Upload Route using Cloudinary
+app.post('/api/upload', upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
   }
   
-  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.json({ 
-    message: 'File uploaded successfully',
-    fileUrl 
-  });
+  try {
+    // Upload file to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'dhanyabuilders',
+      transformation: [{ quality: 'auto' }, { fetch_format: 'auto' }],
+      resource_type: 'auto'
+    });
+    
+    // Remove temp file after upload
+    fs.unlinkSync(req.file.path);
+    
+    // Return the Cloudinary URL
+    res.json({ 
+      message: 'File uploaded successfully to Cloudinary',
+      fileUrl: result.secure_url 
+    });
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    res.status(500).json({ message: 'Error uploading to Cloudinary', error: error.message });
+  }
+});
+
+// Base64 image upload route for direct string uploads
+app.post('/api/upload/base64', async (req, res) => {
+  try {
+    const { image } = req.body;
+    
+    if (!image) {
+      return res.status(400).json({ message: 'No image data provided' });
+    }
+    
+    // Upload base64 image to Cloudinary
+    const result = await cloudinary.uploader.upload(image, {
+      folder: 'dhanyabuilders',
+      transformation: [{ quality: 'auto' }, { fetch_format: 'auto' }]
+    });
+    
+    res.json({ 
+      message: 'Base64 image uploaded successfully',
+      fileUrl: result.secure_url 
+    });
+  } catch (error) {
+    console.error('Cloudinary base64 upload error:', error);
+    res.status(500).json({ message: 'Error uploading to Cloudinary', error: error.message });
+  }
 });
 
 // Default route

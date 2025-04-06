@@ -1,4 +1,3 @@
-
 const express = require('express');
 const Material = require('../models/Material');
 const Project = require('../models/Project');
@@ -190,7 +189,7 @@ router.patch('/:id/reject', auth, adminOnly, async (req, res) => {
   }
 });
 
-// Update material received status and add image (fix endpoint name to match frontend)
+// Update material received status and add Cloudinary image (fix endpoint name to match frontend)
 router.patch('/:id/received', auth, async (req, res) => {
   try {
     const { receivedQuantity, receivedImage, notes } = req.body;
@@ -212,6 +211,7 @@ router.patch('/:id/received', auth, async (req, res) => {
     material.status = 'received';
     material.receivedQuantity = receivedQuantity || material.approvedQuantity || material.quantity;
     
+    // Store the Cloudinary URL directly
     if (receivedImage) {
       material.receivedImage = receivedImage;
     }

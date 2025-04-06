@@ -3,9 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const path = require('path');
 const multer = require('multer');
-const fs = require('fs');
 const cloudinary = require('./config/cloudinary');
 const userRoutes = require('./routes/users');
 const projectRoutes = require('./routes/projects');
@@ -32,29 +30,13 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Configure storage for temporary uploaded files
-const uploadDir = path.join(__dirname, 'temp');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
-});
+// Configure temporary memory storage for uploads directly to Cloudinary
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
-
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Connect to MongoDB
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://harikrishnan9a:1234@dhanyabuildersbackend.nz0as.mongodb.net/?retryWrites=true&w=majority&appName=dhanyabuildersBackend';
@@ -108,15 +90,19 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
   }
   
   try {
-    // Upload file to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path, {
+    // Convert buffer to base64 string for Cloudinary upload
+    const base64String = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    
+    // Upload file to Cloudinary with ml_default transformation
+    const result = await cloudinary.uploader.upload(base64String, {
       folder: 'dhanyabuilders',
-      transformation: [{ quality: 'auto' }, { fetch_format: 'auto' }],
+      transformation: [
+        { quality: 'auto' }, 
+        { fetch_format: 'auto' },
+        { flags: 'ml_default' }
+      ],
       resource_type: 'auto'
     });
-    
-    // Remove temp file after upload
-    fs.unlinkSync(req.file.path);
     
     // Return the Cloudinary URL
     res.json({ 
@@ -138,10 +124,14 @@ app.post('/api/upload/base64', async (req, res) => {
       return res.status(400).json({ message: 'No image data provided' });
     }
     
-    // Upload base64 image to Cloudinary
+    // Upload base64 image to Cloudinary with ml_default transformation
     const result = await cloudinary.uploader.upload(image, {
       folder: 'dhanyabuilders',
-      transformation: [{ quality: 'auto' }, { fetch_format: 'auto' }]
+      transformation: [
+        { quality: 'auto' }, 
+        { fetch_format: 'auto' },
+        { flags: 'ml_default' }
+      ]
     });
     
     res.json({ 
@@ -155,11 +145,6 @@ app.post('/api/upload/base64', async (req, res) => {
 });
 
 // Default route
-// app.use(express.static(path.join(__dirname, '/frontend/dist')));
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname, '/frontend/dist/index.html'))
-// });
-
 app.get('/', (req, res) => {
   res.send('Welcome to the Dhanya Builders API');
 });

@@ -83,7 +83,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/tasks', taskRoutes);
 
-// Image Upload Route using Cloudinary
+// Enhanced image upload route using Cloudinary with better error handling
 app.post('/api/upload', upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: 'No file uploaded' });
@@ -93,21 +93,34 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
     // Convert buffer to base64 string for Cloudinary upload
     const base64String = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     
-    // Upload file to Cloudinary with ml_default transformation
-    const result = await cloudinary.uploader.upload(base64String, getUploadOptions());
+    // Enhanced upload configuration
+    const uploadOptions = getUploadOptions({
+      folder: 'dhanyabuilders/uploads',
+      public_id: `img_${Date.now()}`
+    });
     
-    // Return the Cloudinary URL
+    // Upload file to Cloudinary with enhanced options
+    const result = await cloudinary.uploader.upload(base64String, uploadOptions);
+    
+    // Return the Cloudinary URL with additional metadata
     res.json({ 
       message: 'File uploaded successfully to Cloudinary',
-      fileUrl: result.secure_url 
+      fileUrl: result.secure_url,
+      publicId: result.public_id,
+      format: result.format,
+      version: result.version
     });
   } catch (error) {
     console.error('Cloudinary upload error:', error);
-    res.status(500).json({ message: 'Error uploading to Cloudinary', error: error.message });
+    res.status(500).json({ 
+      message: 'Error uploading to Cloudinary', 
+      error: error.message,
+      details: error.http_code ? `HTTP Code: ${error.http_code}` : 'Unknown error' 
+    });
   }
 });
 
-// Base64 image upload route for direct string uploads
+// Enhanced base64 image upload route for direct string uploads
 app.post('/api/upload/base64', async (req, res) => {
   try {
     const { image } = req.body;
@@ -116,16 +129,28 @@ app.post('/api/upload/base64', async (req, res) => {
       return res.status(400).json({ message: 'No image data provided' });
     }
     
-    // Upload base64 image to Cloudinary with ml_default transformation
-    const result = await cloudinary.uploader.upload(image, getUploadOptions());
+    // Enhanced upload configuration for base64
+    const uploadOptions = getUploadOptions({
+      folder: 'dhanyabuilders/base64',
+      public_id: `base64_${Date.now()}`
+    });
+    
+    // Upload base64 image to Cloudinary with enhanced options
+    const result = await cloudinary.uploader.upload(image, uploadOptions);
     
     res.json({ 
       message: 'Base64 image uploaded successfully',
-      fileUrl: result.secure_url 
+      fileUrl: result.secure_url,
+      publicId: result.public_id,
+      format: result.format
     });
   } catch (error) {
     console.error('Cloudinary base64 upload error:', error);
-    res.status(500).json({ message: 'Error uploading to Cloudinary', error: error.message });
+    res.status(500).json({ 
+      message: 'Error uploading to Cloudinary', 
+      error: error.message,
+      details: error.http_code ? `HTTP Code: ${error.http_code}` : 'Unknown error'
+    });
   }
 });
 
